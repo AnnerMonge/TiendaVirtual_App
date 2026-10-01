@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, FlatList, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -10,44 +17,38 @@ const Catalogo = () => {
   const [busqueda, setBusqueda] = useState("");
   const [categorias, setCategorias] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [todosProductos, setTodosProductos] = useState([]);
+
   useEffect(() => {
     obtenerCategorias();
     obtenerProductos();
   }, []);
+
   const obtenerCategorias = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "Categorias"));
-      const datos = [];
+      const datos = [{ id: "todos", nombre: "Todos", icono: "grid-outline" }];
+
       querySnapshot.forEach((doc) => {
         datos.push({ id: doc.id, ...doc.data() });
       });
+
       setCategorias(datos);
     } catch (error) {
       console.error("Error obteniendo categorías: ", error);
     }
   };
-  
-  const obtenerProductos = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "Productos"));
-      const datos = [];
-      querySnapshot.forEach((doc) => {
-        datos.push({ id: doc.id, ...doc.data() });
-      });
-      setProductos(datos);
-    } catch (error) {
-      console.error("Error obteniendo productos: ", error);
-    }
-  };
-  const productosFiltrados = productos.filter((producto) =>
-    producto.nombre.toLowerCase().includes(busqueda.toLowerCase()),
-  );
 
   const obtenerProductosPorCategoria = async (categoriaId) => {
+    if (categoriaId === "todos") {
+      setProductos(todosProductos);
+      return;
+    }
+
     try {
       const consulta = query(
         collection(db, "Productos"),
-        where("idCategoria", "==", categoriaId),
+        where("categoriaId", "==", categoriaId),
       );
       const consultaSnapshot = await getDocs(consulta);
       const datos = [];
@@ -60,58 +61,73 @@ const Catalogo = () => {
     }
   };
 
+  const obtenerProductos = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "Productos"));
+      const datos = [];
+      querySnapshot.forEach((doc) => {
+        datos.push({ id: doc.id, ...doc.data() });
+      });
+      setTodosProductos(datos);
+      setProductos(datos);
+    } catch (error) {
+      console.error("Error obteniendo productos: ", error);
+    }
+  };
+
+  const productosFiltrados = productos.filter((producto) =>
+    producto.nombre.toLowerCase().includes(busqueda.toLowerCase()),
+  );
+
   return (
-    <View style={styles.contenedor}>
+    <ScrollView
+      style={styles.contenedor}
+      contentContainerStyle={styles.contenedorContenido}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.buscador}>
         <Ionicons name="search-outline" size={18} color="#7C7CFF" />
         <TextInput
           placeholder="Buscar producto"
-          placeholderTextColor="#0d0dda"
+          placeholderTextColor="#B5B5D5"
           style={styles.input}
           value={busqueda}
           onChangeText={setBusqueda}
         />
       </View>
 
-      <FlatList
+      <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categorias}
         contentContainerStyle={styles.categoriasContent}
-        data={categorias}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+      >
+        {categorias.map((categoria) => (
           <Categoria
-            nombre={item.nombre}
-            icono={item.icono}
-            onPress={() => obtenerProductosPorCategoria(item.id)}
+            key={categoria.id}
+            nombre={categoria.nombre}
+            icono={categoria.icono}
+            onPress={() => obtenerProductosPorCategoria(categoria.id)}
           />
-        )}
-      />
+        ))}
+      </ScrollView>
 
       <View style={styles.linea} />
       <Text style={styles.titulo}>News</Text>
 
-      <FlatList
-        data={productosFiltrados}
-        renderItem={({ item }) => (
+      <View style={styles.productos}>
+        {productosFiltrados.map((producto) => (
           <Producto
-            nombre={item.nombre}
-            precio={item.precio}
-            tiempo={item.tiempo}
-            color={item.color}
-            imagen={item.imagen}
+            key={producto.id}
+            nombre={producto.nombre}
+            precio={producto.precio}
+            imagen={producto.imagen}
+            color={producto.color || "#F4F4F4"}
+            tiempo={producto.tiempo || "Hoy"}
           />
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        horizontal={false}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.listaProductos}
-        scrollEnabled={false}
-        showsVerticalScrollIndicator={false}
-      />
-    </View>
+        ))}
+      </View>
+    </ScrollView>
   );
 };
 
