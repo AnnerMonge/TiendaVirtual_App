@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  FlatList,
   StyleSheet,
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { useFocusEffect } from "@react-navigation/native";
 import { db } from "../firebase/config";
 import Categoria from "../components/Categoria";
 import Producto from "../components/Producto";
@@ -19,10 +19,12 @@ const Catalogo = () => {
   const [productos, setProductos] = useState([]);
   const [todosProductos, setTodosProductos] = useState([]);
 
-  useEffect(() => {
-    obtenerCategorias();
-    obtenerProductos();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      obtenerCategorias();
+      obtenerProductos();
+    }, []),
+  );
 
   const obtenerCategorias = async () => {
     try {
@@ -76,7 +78,7 @@ const Catalogo = () => {
   };
 
   const productosFiltrados = productos.filter((producto) =>
-    producto.nombre.toLowerCase().includes(busqueda.toLowerCase()),
+    (producto.nombre || "").toLowerCase().includes(busqueda.toLowerCase()),
   );
 
   return (
